@@ -1,0 +1,3 @@
+<% @page_title = @lead.display_name %>
+<%= parent_page @lead.display_name, lead_path(@lead) %>
+<%= render "leads/leads/form", lead: @lead %>

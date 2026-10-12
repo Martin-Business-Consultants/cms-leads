@@ -1,0 +1,156 @@
+<%# locals: (lead:, draft:, templates:, can_write:) %>
+<%# What to send or say: the tip for the lead's stage and the guides that
+    help, Claude's drafts (when Settings › Leads has a key), and the
+    templates filled in for this lead, each to copy or open in email or
+    messages. %>
+<% personalization = Leads::Personalization.new(lead, sender: Current.user) %>
+<details class="postbox panel" open data-postbox="lead-replies" data-controller="postbox" data-action="toggle->postbox#remember">
+  <summary class="postbox__header"><h2 class="heading">Replies</h2><%= icon_tag "caret-down", class: "postbox__toggle" %></summary>
+  <div class="postbox__body postbox__body--padded">
+  <div id="replies" class="stack">
+    <div class="well stack stack--xs">
+      <p><%= Leads::Guide::STAGE_TIPS.fetch(lead.stage) %></p>
+      <% guides = Leads::Guide.for_stage(lead.stage) %>
+      <% if guides.any? %>
+        <p class="cluster cluster--xs text-small">
+          <span class="text-muted">Read:</span>
+          <% guides.each do |guide| %>
+            <%# herb:key guide.key %>
+            <%= link_to guide.title, leads_guide_path(guide), class: "link" %>
+          <% end %>
+        </p>
+      <% end %>
+    </div>
+
+    <% if Leads::Draft.available? %>
+      <section class="stack stack--sm" aria-labelledby="lead_draft_heading">
+        <div class="row row--between">
+          <h3 class="heading heading--sm" id="lead_draft_heading">Drafted for <%= lead.first_name || lead.display_name %></h3>
+          <% if can_write %>
+            <%= button_to draft ? "Draft again" : "Draft replies", lead_drafts_path(lead), class: "btn btn--sm", form_class: "contents",
+                  disabled: draft&.working? %>
+          <% end %>
+        </div>
+        <% if draft.nil? %>
+          <p class="text-small text-muted">Claude can draft an email, a text and a call plan for this lead, in your voice (Settings › Brand context).</p>
+        <% elsif draft.working? %>
+          <p class="text-small text-muted">Drafting… reload in a moment.</p>
+        <% elsif draft.failed? %>
+          <p class="notice notice--danger"><%= draft.error %></p>
+        <% else %>
+          <p><%= draft.summary %></p>
+          <% step = draft.next_step %>
+          <% if step["title"].present? %>
+            <div class="leads-suggestion row row--between">
+              <span class="stack stack--2xs">
+                <span class="text-small text-muted">Suggested next step</span>
+                <span><strong><%= Leads::Task::KINDS.fetch(step["kind"], "Step") %>:</strong> <%= step["title"] %> (<%= Leads::When::CHOICES.to_h.invert.fetch(step["when"], step["when"]).to_s.downcase %>)</span>
+                <% if step["why"].present? %><span class="text-small text-muted"><%= step["why"] %></span><% end %>
+              </span>
+              <% if can_write %>
+                <%= form_with url: lead_tasks_path(lead), scope: :task, class: "contents" do |form| %>
+                  <%= form.hidden_field :kind, value: step["kind"] %>
+                  <%= form.hidden_field :title, value: step["title"] %>
+                  <%= form.hidden_field :when, value: step["when"] %>
+                  <button type="submit" class="btn btn--sm">Plan it</button>
+                <% end %>
+              <% end %>
+            </div>
+          <% end %>
+
+          <% email = draft.email %>
+          <% if email["body"].present? %>
+            <% subject = personalization.fill(email["subject"]) %>
+            <% body = personalization.fill(email["body"]) %>
+            <div class="leads-reply">
+              <div class="row row--between">
+                <span class="text-small text-muted">Email · <%= subject %></span>
+                <span class="cluster cluster--xs">
+                  <%= copy_button body %>
+                  <% if lead.email.present? %><%= link_to "Open in email", lead_mailto(lead, subject: subject, body: body), class: "btn btn--sm" %><% end %>
+                </span>
+              </div>
+              <pre class="leads-reply__body"><%= body %></pre>
+            </div>
+          <% end %>
+          <% if draft.text_message.present? %>
+            <% text = personalization.fill(draft.text_message) %>
+            <div class="leads-reply">
+              <div class="row row--between">
+                <span class="text-small text-muted">Text message</span>
+                <span class="cluster cluster--xs">
+                  <%= copy_button text %>
+                  <% if lead.phone.present? %><%= link_to "Open in messages", lead_sms(lead, body: text), class: "btn btn--sm" %><% end %>
+                </span>
+              </div>
+              <pre class="leads-reply__body"><%= text %></pre>
+            </div>
+          <% end %>
+          <% call = draft.call %>
+          <% if call["opening"].present? %>
+            <div class="leads-reply stack stack--xs">
+              <span class="text-small text-muted">Call plan</span>
+              <p><strong>Open:</strong> <%= personalization.fill(call["opening"]) %></p>
+              <% if Array(call["questions"]).any? %>
+                <p class="text-medium">Ask</p>
+                <ul class="leads-list">
+                  <% Array(call["questions"]).each do |question| %>
+                    <%# herb:key question %>
+                    <li><%= question %></li>
+                  <% end %>
+                </ul>
+              <% end %>
+              <% if Array(call["objections"]).any? %>
+                <p class="text-medium">If they say</p>
+                <dl class="details">
+                  <% Array(call["objections"]).each do |item| %>
+                    <%# herb:key item["objection"] %>
+                    <dt><%= item["objection"] %></dt>
+                    <dd><%= item["answer"] %></dd>
+                  <% end %>
+                </dl>
+              <% end %>
+            </div>
+          <% end %>
+          <p class="text-small text-faint">Drafted <%= time_ago_tag draft.updated_at %>. Read it before you send it: Claude doesn’t know what isn’t written down.</p>
+        <% end %>
+      </section>
+    <% end %>
+
+    <section class="stack stack--sm" aria-labelledby="lead_templates_heading">
+      <div class="row row--between">
+        <h3 class="heading heading--sm" id="lead_templates_heading">Templates</h3>
+        <%= link_to "All templates", leads_templates_path, class: "link text-small" %>
+      </div>
+      <div class="divided">
+        <% templates.each do |template| %>
+          <%# herb:key template.id %>
+          <% next if template.kind == "email" && lead.email.blank? && lead.phone.blank? %>
+          <% subject, _html, text = template.filled_for(lead) %>
+          <details class="leads-template">
+            <summary class="leads-template__summary">
+              <span class="badge leads-kind"><%= template.kind_label %></span>
+              <span class="text-medium"><%= template.title %></span>
+              <% if template.situation.present? %><span class="text-small text-muted"><%= template.situation %></span><% end %>
+            </summary>
+            <div class="leads-reply">
+              <div class="row row--between">
+                <span class="text-small text-muted"><%= subject %></span>
+                <span class="cluster cluster--xs">
+                  <%= copy_button text %>
+                  <% if template.kind == "email" && lead.email.present? %>
+                    <%= link_to "Open in email", lead_mailto(lead, subject: subject, body: text), class: "btn btn--sm" %>
+                  <% elsif template.kind == "text" && lead.phone.present? %>
+                    <%= link_to "Open in messages", lead_sms(lead, body: text), class: "btn btn--sm" %>
+                  <% end %>
+                </span>
+              </div>
+              <pre class="leads-reply__body"><%= text %></pre>
+            </div>
+          </details>
+        <% end %>
+      </div>
+    </section>
+  </div>
+  </div>
+</details>

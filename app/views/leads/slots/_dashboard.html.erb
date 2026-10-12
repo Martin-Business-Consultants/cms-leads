@@ -1,0 +1,37 @@
+<%# locals: () %>
+<%# The dashboard's Leads panel: what needs doing now, for the person looking. %>
+<% if Current.user&.can?("leads:read") %>
+  <% queue = Leads::Queue.new(user: Current.user) %>
+  <% overdue = queue.overdue.to_a %>
+  <% today = queue.today.to_a %>
+  <% unplanned = queue.without_next_step.to_a %>
+  <section class="panel panel--padded stack stack--sm">
+    <div class="row row--between">
+      <h2 class="heading">Leads</h2>
+      <%= link_to "Needs you", leads_queue_path, class: "link text-small" %>
+    </div>
+    <div class="cluster cluster--base">
+      <span><strong class="<%= overdue.any? ? "text-danger" : "text-ink" %>"><%= overdue.size %></strong> <span class="text-muted">overdue</span></span>
+      <span><strong class="text-ink"><%= today.size %></strong> <span class="text-muted">due today</span></span>
+      <span><strong class="text-ink"><%= unplanned.size %></strong> <span class="text-muted">with no next step</span></span>
+      <span><strong class="text-ink"><%= Leads::Lead.where(created_at: 7.days.ago..).not_spam.count %></strong> <span class="text-muted">new this week</span></span>
+    </div>
+    <% top = (overdue + today).first(5) %>
+    <% if top.any? %>
+      <ul class="divided">
+        <% top.each do |task| %>
+          <%# herb:key task.id %>
+          <li class="row row--between leads-dashboard-row">
+            <span class="grow truncate">
+              <%= link_to task.lead.display_name, lead_path(task.lead), class: "title-link" %>
+              <span class="text-muted">— <%= task.title %></span>
+            </span>
+            <%= lead_due_tag task %>
+          </li>
+        <% end %>
+      </ul>
+    <% elsif unplanned.none? %>
+      <p class="text-small text-muted">Nothing due. Every open lead has a next step.</p>
+    <% end %>
+  </section>
+<% end %>

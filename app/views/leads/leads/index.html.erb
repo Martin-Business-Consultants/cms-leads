@@ -1,0 +1,75 @@
+<% @page_title = "Leads" %>
+<% open_count = @counts.slice(*Leads::Lead::OPEN_STAGES).values.sum %>
+<% can_write = Current.user.can?("leads:write") %>
+<% can_delete = Current.user.can?("leads:delete") %>
+<% bulk = can_write || can_delete %>
+
+<% content_for :page_actions do %>
+  <% if can_write %>
+    <%= link_to "Add New", new_lead_path, class: "btn" %>
+  <% end %>
+  <%= link_to "Needs you", leads_queue_path, class: "btn" %>
+<% end %>
+<%= render "layouts/shared/page_header", title: @page_title %>
+
+<%= render "layouts/shared/status_links", param: :stage, current: @stage,
+      options: [["Open", "open", open_count]] + Leads::Lead::STAGES.map { [it.humanize, it, @counts.fetch(it, 0)] } +
+        [["All but spam", "all", @counts.except("spam").values.sum]] %>
+
+<div class="cluster">
+  <%= render "layouts/shared/quick_filter", title: "Owner", param: :owner, current: @owner.to_s,
+        options: [["Anyone’s", ""], ["Mine", "me"], ["Nobody’s", "none"]] + lead_people_options.map { |name, id| [name, id.to_s] } %>
+</div>
+
+<%= render "layouts/shared/bulk_actions", id: "leads_bulk", noun: "lead",
+      status_path: (leads_bulk_stage_changes_path if can_write), statuses: Leads::Lead::STAGES,
+      deletion_path: (leads_bulk_deletions_path if can_delete) %>
+
+<section class="panel panel--scroll" data-controller="select-all">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <% if bulk %>
+          <th class="data-table__check"><% if @leads.any? %><input type="checkbox" aria-label="Select every row" data-select-all-target="all" data-action="select-all#toggle"><% end %></th>
+        <% end %>
+        <th>Lead</th>
+        <th>Stage</th>
+        <th>Next step</th>
+        <th>Owner</th>
+        <th class="data-table__num">Score</th>
+        <th>Last heard</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @leads.each do |lead| %>
+        <%# herb:key lead.id %>
+        <% task = @next_tasks[lead.id] %>
+        <tr id="<%= dom_id(lead) %>">
+          <% if bulk %>
+            <td class="data-table__check"><input type="checkbox" data-select-all-target="box" data-action="select-all#sync" name="ids[]" value="<%= lead.id %>" form="leads_bulk" aria-label="Select <%= lead.display_name %>"></td>
+          <% end %>
+          <td>
+            <%= link_to lead.display_name, lead_path(lead), class: "title-link" %>
+            <div class="text-small text-muted truncate"><%= [lead.company, lead.source_text].compact_blank.join(" · ") %></div>
+          </td>
+          <td><%= lead_stage_tag lead.stage %></td>
+          <td>
+            <% if task %>
+              <div class="truncate"><%= task.title %></div>
+              <%= lead_due_tag task %>
+            <% elsif lead.open? %>
+              <span class="text-small text-danger">None planned</span>
+            <% else %>
+              <span class="text-small text-faint">—</span>
+            <% end %>
+          </td>
+          <td><span class="text-small"><%= lead_person_name(lead.owner) %></span></td>
+          <td class="data-table__num"><%= lead.score %></td>
+          <td><span class="nowrap text-small text-muted"><%= time_ago_tag(lead.last_activity_at || lead.created_at) %></span></td>
+        </tr>
+      <% end %>
+      <%= table_empty_row("No leads here yet. They arrive when someone fills in a form or asks for a quote.", columns: bulk ? 7 : 6) if @leads.none? %>
+    </tbody>
+  </table>
+</section>
+<%= pagination_nav @pagination %>

@@ -1,0 +1,53 @@
+<%# locals: (lead:) %>
+<%# Adding a lead by hand or editing one, laid out like an editor: the name as
+    the title, then how to reach them in the main column; the owner, stage
+    and (for a new one) its playbook in the save box beside it. %>
+<% new_lead = lead.new_record? %>
+<%= form_with model: lead, url: (new_lead ? leads_path : lead_path(lead)), scope: :lead, id: "lead_form", class: "editor" do |form| %>
+  <div class="editor__main">
+    <div>
+      <label class="visually-hidden" for="lead_name">Name</label>
+      <%= form.text_field :name, class: "title-input", placeholder: "Their name", autofocus: new_lead %>
+    </div>
+
+    <%= render "layouts/shared/errors", record: lead %>
+
+    <%= postbox "lead-contact", "How to reach them" do %>
+      <div class="grid grid--2 fields-grid">
+        <%= settings_field "Email" do %>
+          <%= form.email_field :email, autocomplete: "off" %>
+        <% end %>
+        <%= settings_field "Phone" do %>
+          <%= form.telephone_field :phone, autocomplete: "off" %>
+        <% end %>
+        <%= settings_field "Company" do %>
+          <%= form.text_field :company %>
+        <% end %>
+      </div>
+      <% if new_lead %>
+        <%= settings_field "What they asked for", hint: "The call, the email, the conversation: kept under What they sent." do %>
+          <%= form.text_area :message, rows: 4 %>
+        <% end %>
+      <% end %>
+    <% end %>
+  </div>
+
+  <aside class="editor__aside">
+    <% playbook_select = capture do %>
+      <div class="fields">
+        <%= settings_field "Owner" do %>
+          <%= form.select :owner_id, [["Nobody", ""]] + lead_people_options %>
+        <% end %>
+        <%= settings_field "Stage" do %>
+          <%= form.select :stage, lead_stage_options %>
+        <% end %>
+        <% if new_lead %>
+          <%= settings_field "Playbook", hint: "Plans its first steps from now." do %>
+            <%= form.select :playbook_id, [["The one that matches", ""], ["None", "none"]] + Leads::Playbook.ordered.map { [it.name, it.id] } %>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+    <%= render "layouts/shared/save_box", key: "lead-save", button: new_lead ? "Add lead" : "Save changes", extra: playbook_select %>
+  </aside>
+<% end %>

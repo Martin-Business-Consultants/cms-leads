@@ -1,0 +1,36 @@
+<%# locals: (lead:, activities:, can_write:) %>
+<%# Everything that happened to the lead, newest first, with a note box on
+    top. Each line links to the submission or quote request it came from. %>
+<details class="postbox panel" open data-postbox="lead-timeline" data-controller="postbox" data-action="toggle->postbox#remember">
+  <summary class="postbox__header"><h2 class="heading">Timeline</h2><%= icon_tag "caret-down", class: "postbox__toggle" %></summary>
+  <div class="postbox__body postbox__body--padded">
+  <div id="timeline" class="stack">
+    <% if can_write %>
+      <%= form_with url: lead_notes_path(lead), scope: :note, class: "stack stack--xs" do |form| %>
+        <label class="visually-hidden" for="note_body">Note</label>
+        <%= form.text_area :body, rows: 2, required: true, placeholder: "Add a note: what you learned, what they said" %>
+        <div><button type="submit" class="btn btn--sm">Add note</button></div>
+      <% end %>
+    <% end %>
+    <ol class="leads-timeline">
+      <% activities.each do |activity| %>
+        <%# herb:key activity.id %>
+        <li class="leads-timeline__item">
+          <div class="row row--between row--top">
+            <span class="<%= activity.note? ? "text-ink" : "text-body" %>"><%= activity.note? ? "Note" : activity.summary %></span>
+            <span class="nowrap text-small text-muted"><%= time_ago_tag activity.created_at %></span>
+          </div>
+          <% if activity.body.present? %>
+            <p class="leads-timeline__body text-small"><%= activity.body %></p>
+          <% end %>
+          <span class="cluster cluster--xs text-small text-muted">
+            <% if activity.user %><span><%= lead_person_name(activity.user) %></span><% end %>
+            <% unless activity.points.zero? %><span><%= "+" if activity.points.positive? %><%= activity.points %> points</span><% end %>
+            <%= lead_activity_source_link(activity) %>
+          </span>
+        </li>
+      <% end %>
+    </ol>
+  </div>
+  </div>
+</details>

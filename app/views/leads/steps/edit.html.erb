@@ -1,0 +1,3 @@
+<% @page_title = @step.summary %>
+<%= parent_page @playbook.name, edit_leads_playbook_path(@playbook) %>
+<%= render "leads/steps/form", playbook: @playbook, step: @step %>

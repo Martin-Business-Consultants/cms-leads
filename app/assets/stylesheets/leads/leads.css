@@ -1,0 +1,208 @@
+/* Leads (cms-leads): what's theirs alone — a task's row and its Done form,
+   the lists on Needs you and a lead's page, replies to copy, the timeline,
+   a playbook's steps. Drawn with the admin's tokens (STYLE.md), so it
+   follows Settings › Branding and the dark theme. */
+@layer components {
+  /* A task: its words, Edit, and Done (top right), whose form opens under
+     the row. */
+  .leads-task {
+    padding: var(--space-3) var(--space-5);
+    position: relative;
+  }
+
+  .leads-task__row {
+    align-items: flex-start;
+    display: flex;
+    gap: var(--space-3);
+    padding-inline-end: 4.5rem;
+  }
+
+  .leads-task__notes {
+    white-space: pre-line;
+  }
+
+  .leads-done__toggle {
+    inset-block-start: var(--space-3);
+    inset-inline-end: var(--space-5);
+    position: absolute;
+  }
+
+  .leads-done[open] > .leads-done__toggle {
+    background-color: var(--gray-100);
+    border-color: var(--gray-300);
+    color: var(--gray-900);
+  }
+
+  .leads-done__form {
+    background-color: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    margin-block-start: var(--space-3);
+    padding: var(--space-4);
+  }
+
+  /* Kind, what, when: a next step on one line from 40rem. */
+  .leads-next-fields {
+    display: grid;
+    gap: var(--space-2);
+    grid-template-columns: minmax(0, 1fr);
+
+    @media (width >= 40rem) {
+      grid-template-columns: 8rem minmax(0, 1fr) 9rem;
+    }
+  }
+
+  /* A lead's kind of task, step or template, quietly. */
+  .leads-kind {
+    font-weight: var(--weight-medium);
+  }
+
+  /* A line in a list that isn't a task: a lead, a template. */
+  .leads-row {
+    align-items: center;
+    display: flex;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-5);
+  }
+
+  /* A step on the dashboard's Leads panel, inside its padding. */
+  .leads-dashboard-row {
+    padding-block: var(--space-2);
+  }
+
+  .leads-panel-notice {
+    margin: var(--space-4) var(--space-5) 0;
+  }
+
+  /* "Add a step", under a lead's next steps. */
+  .leads-add {
+    border-block-start: 1px solid var(--gray-200);
+    padding: var(--space-3) var(--space-5);
+  }
+
+  .leads-add__toggle {
+    cursor: pointer;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+  }
+
+  .leads-add__form {
+    margin-block-start: var(--space-3);
+  }
+
+  .leads-sent__value {
+    white-space: pre-wrap;
+  }
+
+  /* Claude's suggested next step, with Plan it. */
+  .leads-suggestion {
+    background-color: var(--accent-50);
+    border: 1px solid var(--accent-100);
+    border-radius: var(--radius-lg);
+    padding: var(--space-3) var(--space-4);
+  }
+
+  /* A reply to send: what it is and its buttons, then its words. */
+  .leads-reply {
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .leads-reply__body {
+    font: inherit;
+    font-size: var(--text-sm);
+    margin: 0;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+
+  .leads-list {
+    font-size: var(--text-sm);
+    list-style: disc;
+    padding-inline-start: var(--space-5);
+  }
+
+  .leads-template {
+    padding-block: var(--space-2);
+
+    > .leads-reply {
+      margin-block-start: var(--space-2);
+    }
+  }
+
+  .leads-template__summary {
+    align-items: baseline;
+    cursor: pointer;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  /* The timeline: a rule down the side, a dot per thing. */
+  .leads-timeline {
+    border-inline-start: 2px solid var(--gray-200);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    margin-inline-start: var(--space-1);
+    padding-inline-start: var(--space-4);
+  }
+
+  .leads-timeline__item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    position: relative;
+
+    &::before {
+      background-color: var(--gray-400);
+      block-size: 0.5rem;
+      border-radius: var(--radius-full);
+      content: "";
+      inline-size: 0.5rem;
+      inset-block-start: 0.45rem;
+      inset-inline-start: calc(-1 * var(--space-4) - 5px);
+      position: absolute;
+    }
+  }
+
+  .leads-timeline__body {
+    color: var(--gray-700);
+    white-space: pre-wrap;
+  }
+
+  /* A short number box: points, a step's delay. */
+  .leads-points {
+    inline-size: 5.5rem;
+  }
+
+  /* A playbook's step: when, on the left, then what. */
+  .leads-step {
+    align-items: baseline;
+    display: flex;
+    gap: var(--space-4);
+    padding: var(--space-3) var(--space-5);
+  }
+
+  .leads-step__when {
+    flex-shrink: 0;
+    inline-size: 6.5rem;
+  }
+
+  .leads-guide-card {
+    color: inherit;
+    text-decoration: none;
+
+    &:hover {
+      border-color: var(--gray-300);
+    }
+  }
+
+  .leads-form-choices {
+    padding-inline-start: var(--space-6);
+  }
+}

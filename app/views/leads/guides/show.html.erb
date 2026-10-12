@@ -1,0 +1,10 @@
+<% @page_title = @guide.title %>
+<%= parent_page "Learning Center", leads_guides_path %>
+<%= render "layouts/shared/page_header", title: @guide.title %>
+
+<article class="panel panel--padded prose measure--lg">
+  <p class="text-muted"><%= @guide.summary %> · <%= @guide.minutes %> minute read</p>
+  <%= render @guide.partial %>
+</article>
+
+<p><%= link_to "All guides", leads_guides_path, class: "link" %></p>

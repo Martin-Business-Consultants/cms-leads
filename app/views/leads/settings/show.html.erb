@@ -1,0 +1,93 @@
+<% @page_title = "Leads" %>
+<% can_write = Current.user.can?("settings:write") %>
+
+<%= render "layouts/shared/page_header", title: "Leads" %>
+<% content_for :settings_aside do %>
+  <%= render "settings/save_box", form: "leads_settings_form", capability: "settings:write" %>
+<% end %>
+
+<%= form_with url: settings_leads_path, id: "leads_settings_form", method: :patch, scope: :leads do |form| %>
+  <%= tag.fieldset class: "stack stack--lg", disabled: !can_write do %>
+    <section class="panel panel--padded fields">
+      <div class="stack stack--xs">
+        <h2 class="heading">When someone gets in touch</h2>
+        <p class="text-muted">Who hears about it at once, and who owns a lead its playbook doesn’t give an owner.</p>
+      </div>
+      <%= settings_switch form, :notify_owner, "Email the lead’s owner", checked: @settings.notify_owner? %>
+      <%= settings_field "Also tell", hint: "Email addresses, separated by commas. They get unassigned leads’ digest too." do %>
+        <%= form.text_field :notify_emails, value: @settings.notify_emails.join(", "), placeholder: "sales@example.com" %>
+      <% end %>
+      <div class="grid grid--2 fields-grid">
+        <%= settings_field "Default owner", hint: "For a lead whose playbook names nobody." do %>
+          <%= form.select :default_owner_id, [["Nobody: everyone sees it", ""]] + @people.map { [it.name.presence || it.email, it.id] },
+                selected: @settings.default_owner_id %>
+        <% end %>
+        <%= settings_field "Morning digest", hint: "Each person’s steps for the day, by email, in the site’s time zone." do %>
+          <%= form.select :digest_hour, [["Off", ""]] + Leads::Settings::DIGEST_HOURS.map { [Time.current.change(hour: it).strftime("%-l %P"), it] },
+                selected: @settings.digest_hour %>
+        <% end %>
+      </div>
+    </section>
+
+    <section class="panel panel--padded fields">
+      <div class="stack stack--xs">
+        <h2 class="heading">Where leads come from</h2>
+        <p class="text-muted">A submission with a name, an email address or a phone number becomes a lead, or adds to the one it already is. Quote requests always do, when Commerce is on.</p>
+      </div>
+      <fieldset class="stack stack--xs">
+        <legend class="label">Forms</legend>
+        <label class="choice"><%= form.radio_button :forms_mode, "all", checked: @settings.forms_mode == "all" %><span>Every form</span></label>
+        <label class="choice"><%= form.radio_button :forms_mode, "chosen", checked: @settings.forms_mode == "chosen" %><span>Only these</span></label>
+        <%= hidden_field_tag "leads[forms][]", "" %>
+        <div class="cluster cluster--md leads-form-choices">
+          <% @forms.each do |form_record| %>
+            <%# herb:key form_record.slug %>
+            <label class="choice">
+              <%= check_box_tag "leads[forms][]", form_record.slug, @settings.forms.include?(form_record.slug), id: "leads_forms_#{form_record.slug}" %>
+              <span><%= form_record.title %></span>
+            </label>
+          <% end %>
+          <% if @forms.empty? %><span class="text-small text-muted">No forms yet.</span><% end %>
+        </div>
+      </fieldset>
+    </section>
+
+    <section class="panel panel--padded fields">
+      <div class="stack stack--xs">
+        <h2 class="heading">Scoring</h2>
+        <p class="text-muted">Points for what a lead does. A lead at the threshold, active this week, shows as hot in Needs you.</p>
+      </div>
+      <div class="grid grid--3 fields-grid">
+        <% Leads::Settings::POINT_LABELS.each do |key, label| %>
+          <%# herb:key key %>
+          <%= settings_field label do %>
+            <%= number_field_tag "leads[points][#{key}]", @settings.points[key], min: -100, max: 100, id: "leads_points_#{key}" %>
+          <% end %>
+        <% end %>
+        <%= settings_field "Hot at" do %>
+          <%= form.number_field :hot_threshold, value: @settings.hot_threshold, min: 1, max: 1000 %>
+        <% end %>
+      </div>
+    </section>
+
+    <section class="panel panel--padded fields">
+      <div class="stack stack--xs">
+        <h2 class="heading">Drafted replies</h2>
+        <p class="text-muted">Claude drafts an email, a text and a call plan for a lead, in the voice of Settings › Brand context. Nothing is sent by itself: a person reads, edits and sends. Uses your own Anthropic account; each draft is one request.</p>
+      </div>
+      <%= settings_field "Anthropic API key", hint: (@settings.ai_key.present? ? "A key is set. Type a new one to replace it." : "From console.anthropic.com › API keys.") do %>
+        <%= form.password_field :anthropic_api_key, autocomplete: "off", placeholder: (@settings.ai_key.present? ? "•••••••• (set)" : "sk-ant-…") %>
+      <% end %>
+      <% if @settings.ai_key.present? %>
+        <label class="choice"><%= form.check_box :remove_ai_key %><span>Remove the key</span></label>
+      <% end %>
+      <div class="grid grid--2 fields-grid">
+        <%= settings_field "Model" do %>
+          <%= form.text_field :ai_model, value: @settings.ai_model %>
+        <% end %>
+      </div>
+      <%= settings_switch form, :ai_drafts, "Draft replies for every new lead", checked: @settings.to_h[:ai_drafts],
+            hint: "As soon as it comes in, so they’re waiting when someone opens the lead." %>
+    </section>
+  <% end %>
+<% end %>

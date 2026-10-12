@@ -1,0 +1,4 @@
+<% @page_title = @template.title %>
+<%= parent_page "Templates", leads_templates_path %>
+<%= render "leads/templates/form", template: @template %>
+<%= render "layouts/shared/delete_form", id: "template_delete_form", path: leads_template_path(@template) %>

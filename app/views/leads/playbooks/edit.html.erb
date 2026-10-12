@@ -1,0 +1,4 @@
+<% @page_title = @playbook.name %>
+<%= parent_page "Playbooks", leads_playbooks_path %>
+<%= render "leads/playbooks/form", playbook: @playbook %>
+<%= render "layouts/shared/delete_form", id: "playbook_delete_form", path: leads_playbook_path(@playbook) %>

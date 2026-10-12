@@ -1,0 +1,13 @@
+<%# locals: () %>
+<%# In the admin bar, while something is due: how many lead steps are overdue
+    or due today (and open leads with nothing planned), for whoever's
+    looking, linked to Needs you. %>
+<% if Current.user&.can?("leads:read") %>
+  <% count = Leads::Queue.new(user: Current.user, whose: "mine").count %>
+  <% if count.positive? %>
+    <%= link_to leads_queue_path(whose: "mine"), class: "admin-bar__item", title: "Lead steps due today, and leads with no next step" do %>
+      <%= icon_tag "bell-alert", class: "icon--sm" %>
+      <span class="admin-bar__label"><%= count == 1 ? "1 lead needs you" : "#{count} leads need you" %></span>
+    <% end %>
+  <% end %>
+<% end %>

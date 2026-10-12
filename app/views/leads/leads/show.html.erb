@@ -1,0 +1,53 @@
+<% @page_title = @lead.display_name %>
+<%= parent_page "Leads", leads_path %>
+<%# A lead's page, laid out like an editor: who they are and what's next in
+    the main column — the next steps, what they sent, replies to send, the
+    timeline — and its owner, stage, playbooks and score down the side, level
+    with it. %>
+<% can_write = Current.user.can?("leads:write") %>
+
+<div class="editor">
+  <div class="editor__main">
+    <header class="stack stack--xs">
+      <h1 class="page-title"><%= @lead.display_name %></h1>
+      <div class="cluster cluster--xs text-muted">
+        <%= lead_stage_tag @lead.stage %>
+        <% if @lead.hot? %><span class="badge badge--danger">Hot</span><% end %>
+        <% if @lead.company.present? %><span><%= @lead.company %></span><% end %>
+        <span>· <%= @lead.source_text %>, <%= time_ago_tag @lead.created_at %></span>
+      </div>
+      <% links = lead_contact_links(@lead) %>
+      <% if links.any? %>
+        <div class="cluster cluster--xs">
+          <% links.each do |label, href| %>
+            <%# herb:key label %>
+            <%= link_to label, href, class: "btn btn--sm" %>
+          <% end %>
+          <span class="text-small text-muted"><%= [@lead.phone, @lead.email].compact_blank.join(" · ") %></span>
+        </div>
+      <% end %>
+    </header>
+
+    <%= render "leads/leads/next_steps", lead: @lead, tasks: @tasks, can_write: can_write %>
+
+    <% if @lead.fields.present? %>
+      <%= postbox "lead-sent", "What they sent" do %>
+        <dl class="details details--wide">
+          <% @lead.fields.each do |label, value| %>
+            <%# herb:key label %>
+            <dt><%= label %></dt>
+            <dd class="leads-sent__value"><%= value %></dd>
+          <% end %>
+        </dl>
+      <% end %>
+    <% end %>
+
+    <%= render "leads/leads/replies", lead: @lead, draft: @draft, templates: @templates, can_write: can_write %>
+
+    <%= render "leads/leads/timeline", lead: @lead, activities: @activities, can_write: can_write %>
+  </div>
+
+  <aside class="editor__aside">
+    <%= render "leads/leads/sidebar", lead: @lead, enrollments: @enrollments, can_write: can_write %>
+  </aside>
+</div>

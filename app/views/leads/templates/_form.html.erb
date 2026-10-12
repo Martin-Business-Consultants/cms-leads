@@ -1,0 +1,40 @@
+<%# locals: (template:) %>
+<%# A template's editor: its title, then its subject and words; its kind and
+    when to use it beside them. %>
+<% persisted = template.persisted? %>
+<%= form_with model: template, url: (persisted ? leads_template_path(template) : leads_templates_path), scope: :template,
+      id: "template_form", class: "editor" do |form| %>
+  <div class="editor__main">
+    <div>
+      <label class="visually-hidden" for="template_title">Title</label>
+      <%= form.text_field :title, required: true, class: "title-input", placeholder: "e.g. First reply to a website enquiry", autofocus: !persisted %>
+    </div>
+
+    <%= render "layouts/shared/errors", record: template %>
+
+    <%= postbox "template-words", "Words" do %>
+      <%= settings_field "Subject", hint: "Emails only." do %>
+        <%= form.text_field :subject %>
+      <% end %>
+      <%= settings_field "Body", hint: "Simple HTML: <p>, <strong>, <em>, <ul>, <a>. Placeholders: {{first_name}} {{name}} {{company}} {{email}} {{phone}} {{my_name}} {{business}}." do %>
+        <%= form.text_area :body, rows: 12, class: "text-mono text-small" %>
+      <% end %>
+    <% end %>
+  </div>
+
+  <aside class="editor__aside">
+    <% about = capture do %>
+      <div class="fields">
+        <%= settings_field "Kind" do %>
+          <%= form.select :kind, Leads::Template::KINDS.invert %>
+        <% end %>
+        <%= settings_field "When to use it" do %>
+          <%= form.text_field :situation, placeholder: "e.g. Within minutes of a new lead" %>
+        <% end %>
+      </div>
+    <% end %>
+    <%= render "layouts/shared/save_box", key: "template-save", button: persisted ? "Save" : "Add template", extra: about,
+          trash_name: (template.title if persisted), trash_path: (leads_template_path(template) if persisted),
+          trash_form: ("template_delete_form" if persisted) %>
+  </aside>
+<% end %>

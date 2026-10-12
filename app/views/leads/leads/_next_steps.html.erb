@@ -1,0 +1,48 @@
+<%# locals: (lead:, tasks:, can_write:) %>
+<%# What's planned for the lead, earliest first — the first is its next step —
+    and adding one. An open lead with nothing planned says so plainly, with
+    the form open. %>
+<% unplanned = lead.open? && tasks.none? %>
+<section id="next_step" class="panel" aria-labelledby="next_step_heading">
+  <header class="panel__header row row--between">
+    <h2 class="heading" id="next_step_heading">Next steps</h2>
+    <% if tasks.any? %><span class="text-small text-muted"><%= pluralize(tasks.size, "step") %> planned</span><% end %>
+  </header>
+
+  <% if unplanned %>
+    <p class="notice notice--warning leads-panel-notice">Nothing is planned for <%= lead.display_name %>. Decide what’s next, or move the lead to won or lost.</p>
+  <% elsif tasks.none? %>
+    <p class="leads-panel-notice text-muted">This lead is <%= lead.stage %>: nothing more is planned.</p>
+  <% end %>
+
+  <% if tasks.any? %>
+    <ul class="divided">
+      <% tasks.each do |task| %>
+        <%# herb:key task.id %>
+        <%= render "leads/tasks/task", task: task %>
+      <% end %>
+    </ul>
+  <% end %>
+
+  <% if can_write %>
+    <%= tag.details class: "leads-add", open: unplanned do %>
+      <summary class="leads-add__toggle link">Add a step</summary>
+      <%= form_with url: lead_tasks_path(lead), scope: :task, class: "leads-add__form fields" do |form| %>
+        <div class="leads-next-fields">
+          <%= form.select :kind, lead_task_kind_options, {}, aria: { label: "Kind" } %>
+          <%= form.text_field :title, required: true, placeholder: "e.g. Call to talk through the quote", aria: { label: "What" } %>
+          <%= form.select :when, lead_when_options, { selected: "1d" }, aria: { label: "When" } %>
+        </div>
+        <%= settings_field "Notes", hint: "Anything that helps whoever does it." do %>
+          <%= form.text_area :notes, rows: 2 %>
+        <% end %>
+        <%= settings_field "Who" do %>
+          <%= form.select :assignee_id, [["Whoever owns the lead", ""]] + lead_people_options %>
+        <% end %>
+        <div class="form-actions">
+          <button type="submit" class="btn btn--primary">Add step</button>
+        </div>
+      <% end %>
+    <% end %>
+  <% end %>
+</section>

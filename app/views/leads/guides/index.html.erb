@@ -1,0 +1,16 @@
+<% @page_title = "Learning Center" %>
+<%= parent_page "Leads", leads_queue_path %>
+<%= render "layouts/shared/page_header", title: @page_title %>
+
+<p class="text-muted measure--lg">Short guides on turning an enquiry into a sale, for people who market more than they sell. Each lead’s page points to the ones for its stage.</p>
+
+<div class="grid grid--2">
+  <% @guides.each do |guide| %>
+    <%# herb:key guide.key %>
+    <%= link_to leads_guide_path(guide), class: "panel panel--padded stack stack--xs leads-guide-card" do %>
+      <span class="heading"><%= guide.title %></span>
+      <span class="text-muted"><%= guide.summary %></span>
+      <span class="text-small text-faint"><%= guide.minutes %> minute read</span>
+    <% end %>
+  <% end %>
+</div>

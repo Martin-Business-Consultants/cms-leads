@@ -1,0 +1,97 @@
+<%# locals: (playbook:) %>
+<%# A playbook's editor: its name as the title, then its steps in the order
+    they happen, counted from when the lead arrives; when it starts, who owns
+    its leads and whether it's on, in the save box beside them. Steps are
+    edited on their own screens, so they're outside this form: it names the
+    form its fields belong to. %>
+<% persisted = playbook.persisted? %>
+<div class="editor">
+  <div class="editor__main">
+    <div>
+      <label class="visually-hidden" for="playbook_name">Name</label>
+      <%= tag.input type: "text", id: "playbook_name", name: "playbook[name]", value: playbook.name, required: true, form: "playbook_form",
+            class: "title-input", placeholder: "Playbook name, e.g. Website enquiries", autofocus: !persisted %>
+    </div>
+
+    <%= render "layouts/shared/errors", record: playbook %>
+
+    <% if persisted %>
+      <section class="panel" aria-labelledby="playbook_steps_heading">
+        <header class="panel__header row row--between">
+          <h2 class="heading" id="playbook_steps_heading">Steps</h2>
+          <span class="cluster cluster--xs">
+            <%= link_to "Add a task", new_leads_playbook_step_path(playbook, step_action: "task"), class: "btn btn--sm" %>
+            <%= link_to "Add an email", new_leads_playbook_step_path(playbook, step_action: "email"), class: "btn btn--sm" %>
+          </span>
+        </header>
+        <% steps = playbook.ordered_steps %>
+        <% if steps.empty? %>
+          <p class="empty-state">No steps yet. Start with the first call: a task “Call {{first_name}} back”, 15 minutes in.</p>
+        <% else %>
+          <ol class="divided">
+            <% steps.each do |step| %>
+              <%# herb:key step.id %>
+              <li class="leads-step">
+                <span class="leads-step__when text-small text-muted nowrap"><%= step.delay_label %></span>
+                <span class="stack stack--2xs grow">
+                  <span class="cluster cluster--xs">
+                    <span class="badge leads-kind"><%= step.task? ? Leads::Task::KINDS.fetch(step.task_kind) : "Sends an email" %></span>
+                    <%= link_to(step.task? ? step.title : step.subject, edit_leads_playbook_step_path(playbook, step), class: "title-link") %>
+                  </span>
+                  <% if step.body.present? %>
+                    <span class="text-small text-muted truncate"><%= step.body.squish.truncate(140) %></span>
+                  <% end %>
+                  <% if step.skip_if_reached? %>
+                    <span class="text-small text-faint">Dropped once someone reaches them</span>
+                  <% end %>
+                </span>
+              </li>
+            <% end %>
+          </ol>
+        <% end %>
+      </section>
+    <% else %>
+      <p class="notice notice--info">Save the playbook, then add its steps.</p>
+    <% end %>
+  </div>
+
+  <aside class="editor__aside">
+    <%= form_with model: playbook, url: (persisted ? leads_playbook_path(playbook) : leads_playbooks_path), scope: :playbook, id: "playbook_form" do |form| %>
+      <% settings = capture do %>
+        <div class="fields">
+          <%= settings_switch form, :active, "On", hint: "Off, it starts for nobody and sends nothing; leads already following it wait." %>
+          <%= settings_field "Starts for" do %>
+            <%= form.select :trigger, Leads::Playbook::TRIGGERS.invert %>
+          <% end %>
+          <%= settings_field "Form", hint: "For “A lead from one form”." do %>
+            <%= form.select :trigger_form, [["Choose a form", ""]] + lead_form_options %>
+          <% end %>
+          <%= settings_field "Owner of its leads", hint: "Else Settings › Leads’ default owner." do %>
+            <%= form.select :owner_id, [["Settings’ default", ""]] + lead_people_options %>
+          <% end %>
+        </div>
+      <% end %>
+      <%= render "layouts/shared/save_box", key: "playbook-save", button: persisted ? "Save" : "Add playbook", extra: settings,
+            trash_name: (playbook.name if persisted), trash_path: (leads_playbook_path(playbook) if persisted),
+            trash_form: ("playbook_delete_form" if persisted),
+            trash_message: "Leads following it stop; the tasks it planned stay." %>
+    <% end %>
+
+    <% if persisted && playbook.steps.any?(&:email?) %>
+      <%= postbox "playbook-test", "Try its emails" do %>
+        <p class="text-small text-muted">Sends every email step to <%= Current.user.email %> now, filled in with your name.</p>
+        <%= button_to "Send me the emails", leads_playbook_test_path(playbook), class: "btn btn--sm", form_class: "contents" %>
+      <% end %>
+    <% end %>
+
+    <%= postbox "playbook-placeholders", "Placeholders", open: false do %>
+      <p class="text-small text-muted">Titles, subjects and emails may say:</p>
+      <p class="cluster cluster--xs">
+        <% Leads::Personalization::PLACEHOLDERS.each do |name| %>
+          <%# herb:key name %>
+          <code class="code">{{<%= name %>}}</code>
+        <% end %>
+      </p>
+    <% end %>
+  </aside>
+</div>

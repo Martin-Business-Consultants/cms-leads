@@ -1,0 +1,53 @@
+<% @page_title = "Playbooks" %>
+<%= parent_page "Leads", leads_queue_path %>
+<% can_edit = Current.user.can?("leads:playbooks") %>
+
+<% content_for :page_actions do %>
+  <% if can_edit %>
+    <%= link_to "Add New", new_leads_playbook_path, class: "btn" %>
+  <% end %>
+<% end %>
+<%= render "layouts/shared/page_header", title: @page_title %>
+
+<p class="text-muted measure--lg">When a lead comes in, one playbook starts: its form’s, else one for any form or for quote requests, else the one for every lead. It gives the lead an owner and plans its first steps, so whoever owns it knows what to do and when. Start one by hand from any lead’s page.</p>
+
+<section class="panel panel--scroll">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Playbook</th>
+        <th>Starts for</th>
+        <th>Steps</th>
+        <th>Owner</th>
+        <th class="data-table__num">Following</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @playbooks.each do |playbook| %>
+        <%# herb:key playbook.id %>
+        <% steps = playbook.ordered_steps %>
+        <tr id="<%= dom_id(playbook) %>">
+          <td>
+            <%= can_edit ? link_to(playbook.name, edit_leads_playbook_path(playbook), class: "title-link") : tag.span(playbook.name, class: "text-medium") %>
+            <% if can_edit %>
+              <%= render "layouts/shared/row_links", edit_path: edit_leads_playbook_path(playbook), delete_path: leads_playbook_path(playbook),
+                    delete_name: playbook.name, delete_message: "Leads following it stop; the tasks it planned stay." %>
+            <% end %>
+          </td>
+          <td><%= playbook.trigger_label %></td>
+          <td class="text-small text-muted">
+            <% if steps.empty? %>None yet<% else %>
+              <%= pluralize(steps.count(&:task?), "task") %><% if steps.any?(&:email?) %>, <%= pluralize(steps.count(&:email?), "email") %><% end %>
+              over <%= steps.last.delay_label.delete_suffix(" in").sub("Right away", "the first hour") %>
+            <% end %>
+          </td>
+          <td><span class="text-small"><%= playbook.owner ? lead_person_name(playbook.owner) : "Settings’ default" %></span></td>
+          <td class="data-table__num"><%= @active_counts.fetch(playbook.id, 0) %></td>
+          <td><%= status_tag playbook.active? ? "Active" : "Off" %></td>
+        </tr>
+      <% end %>
+      <%= table_empty_row("No playbooks yet.", columns: 6, link: (["Add the first", new_leads_playbook_path] if can_edit)) if @playbooks.none? %>
+    </tbody>
+  </table>
+</section>

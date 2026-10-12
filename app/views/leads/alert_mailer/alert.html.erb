@@ -1,0 +1,46 @@
+<%# Someone got in touch: who, what they sent, what's planned, and a link to
+    the lead. Inline styles: email clients don't load the admin's. %>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f7f7f5;padding:24px 0;">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border:1px solid #e7e5e4;border-radius:8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1c1917;">
+        <tr>
+          <td style="padding:24px 32px 8px;">
+            <p style="margin:0;font-size:12px;letter-spacing:0.04em;text-transform:uppercase;color:#78716c;"><%= @heading %> · <%= @lead.source_text %></p>
+            <h1 style="margin:6px 0 4px;font-size:22px;line-height:1.3;"><%= @lead.display_name %></h1>
+            <p style="margin:0;font-size:14px;color:#57534e;">
+              <%= safe_join([@lead.company, @lead.email, @lead.phone].compact_blank, " · ") %>
+            </p>
+          </td>
+        </tr>
+        <% if @lead.fields.present? %>
+          <tr>
+            <td style="padding:12px 32px;">
+              <table role="presentation" width="100%" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-size:14px;">
+                <% @lead.fields.first(12).each do |label, value| %>
+                  <%# herb:key label %>
+                  <tr>
+                    <td valign="top" style="border:1px solid #e7e5e4;background:#fafaf9;font-weight:600;width:140px;"><%= label %></td>
+                    <td style="border:1px solid #e7e5e4;white-space:pre-wrap;"><%= value.to_s.truncate(600) %></td>
+                  </tr>
+                <% end %>
+              </table>
+            </td>
+          </tr>
+        <% end %>
+        <tr>
+          <td style="padding:8px 32px 24px;font-size:14px;line-height:1.55;">
+            <% if @next_task %>
+              <p style="margin:0 0 4px;"><strong>Next step:</strong> <%= @next_task.title %><% if @next_task.due_at %>, due <%= lead_due_words(@next_task.due_at) %><% end %><% if @next_task.assignee %> (<%= @next_task.assignee.name.presence || @next_task.assignee.email %>)<% end %></p>
+            <% else %>
+              <p style="margin:0 0 4px;"><strong>Nothing is planned yet.</strong> Decide the next step on the lead.</p>
+            <% end %>
+            <p style="margin:16px 0 0;">
+              <a href="<%= lead_url(@lead) %>" style="display:inline-block;background:#1c1917;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:6px;font-weight:600;">Open the lead</a>
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>

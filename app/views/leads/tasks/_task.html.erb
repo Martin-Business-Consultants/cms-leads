@@ -1,0 +1,70 @@
+<%# locals: (task:, show_lead: false, from: nil, whose: nil) %>
+<%# One open task: what, for which lead (in Needs you), when, whose; Done
+    opens how it went and what's next (Leads::Task::Completion) under it. %>
+<% can_write = Current.user.can?("leads:write") %>
+<li id="<%= dom_id(task) %>" class="leads-task">
+  <div class="leads-task__row">
+    <div class="stack stack--2xs grow">
+      <span class="cluster cluster--xs">
+        <%= lead_task_kind_tag task %>
+        <span class="text-medium text-ink"><%= task.title %></span>
+        <%= lead_due_tag task %>
+      </span>
+      <% if show_lead %>
+        <span class="cluster cluster--xs text-small text-muted">
+          <%= link_to task.lead.display_name, lead_path(task.lead), class: "title-link" %>
+          <% if task.lead.company.present? %><span><%= task.lead.company %></span><% end %>
+          <%= lead_stage_tag task.lead.stage %>
+          <% if task.lead.hot? %><span class="badge badge--danger">Hot</span><% end %>
+          <span>· <%= lead_person_name(task.assignee) %></span>
+        </span>
+      <% elsif task.assignee %>
+        <span class="text-small text-muted"><%= lead_person_name(task.assignee) %></span>
+      <% end %>
+      <% if task.notes.present? %>
+        <span class="text-small text-muted leads-task__notes"><%= task.notes %></span>
+      <% end %>
+    </div>
+    <% if can_write %>
+      <%= link_to "Edit", edit_leads_task_path(task), class: "btn btn--plain btn--sm" %>
+    <% end %>
+  </div>
+
+  <% if can_write %>
+    <details class="leads-done">
+      <summary class="btn btn--primary btn--sm leads-done__toggle">Done</summary>
+      <%= form_with url: leads_task_completion_path(task, from: from, whose: whose), scope: :completion, class: "leads-done__form fields" do |form| %>
+        <fieldset class="stack stack--xs">
+          <legend class="label">How did it go?</legend>
+          <div class="cluster cluster--md">
+            <% (task.contact? ? %w[reached no_answer] : %w[done]).each_with_index do |result, index| %>
+              <%# herb:key result %>
+              <label class="choice">
+                <%= form.radio_button :result, result, checked: index.zero? %>
+                <span><%= Leads::Task::RESULTS.fetch(result) %></span>
+              </label>
+            <% end %>
+          </div>
+        </fieldset>
+        <%= settings_field "What happened", hint: "On the timeline, for whoever picks it up next." do %>
+          <%= form.text_area :outcome, rows: 2 %>
+        <% end %>
+        <fieldset class="stack stack--xs">
+          <legend class="label">What’s next?</legend>
+          <div class="leads-next-fields">
+            <%= form.select :next_kind, lead_task_kind_options, {}, aria: { label: "Kind" } %>
+            <%= form.text_field :next_title, placeholder: "Next step, e.g. Send the quote", aria: { label: "Next step" } %>
+            <%= form.select :next_when, lead_when_options, { selected: "1d" }, aria: { label: "When" } %>
+          </div>
+          <span class="help">Leave it blank to finish without one: the lead shows in Needs you until someone decides.</span>
+        </fieldset>
+        <%= settings_field "Stage" do %>
+          <%= form.select :stage, [["Keep it #{task.lead.stage.humanize.downcase}", ""]] + lead_stage_options.reject { it.last == task.lead.stage } %>
+        <% end %>
+        <div class="form-actions">
+          <button type="submit" class="btn btn--primary">Save</button>
+        </div>
+      <% end %>
+    </details>
+  <% end %>
+</li>

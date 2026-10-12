@@ -1,0 +1,63 @@
+<%# locals: (playbook:, step:) %>
+<%# A playbook step's editor: a task's title (or an email's subject) as the
+    title, then its notes or the email's words; when it happens and whether
+    it's dropped once the lead is reached, beside them. %>
+<% persisted = step.persisted? %>
+<% url = persisted ? leads_playbook_step_path(playbook, step) : leads_playbook_steps_path(playbook) %>
+<%= form_with model: step, url: url, scope: :step, id: "step_form", class: "editor" do |form| %>
+  <%= form.hidden_field :action %>
+  <div class="editor__main">
+    <div>
+      <% if step.task? %>
+        <label class="visually-hidden" for="step_title">Task</label>
+        <%= form.text_field :title, required: true, class: "title-input", placeholder: "e.g. Call {{first_name}} back", autofocus: !persisted %>
+      <% else %>
+        <label class="visually-hidden" for="step_subject">Subject</label>
+        <%= form.text_field :subject, required: true, class: "title-input", placeholder: "Email subject", autofocus: !persisted %>
+      <% end %>
+    </div>
+
+    <%= render "layouts/shared/errors", record: step %>
+
+    <% if step.task? %>
+      <%= postbox "step-task", "The task" do %>
+        <%= settings_field "Kind" do %>
+          <%= form.select :task_kind, lead_task_kind_options %>
+        <% end %>
+        <%= settings_field "Notes", hint: "How to do it well: which template, what to ask. Shown with the task." do %>
+          <%= form.text_area :body, rows: 4 %>
+        <% end %>
+      <% end %>
+    <% else %>
+      <%= postbox "step-email", "The email" do %>
+        <p class="text-small text-muted">Sent from the site’s address to the lead, as plain paragraphs (a blank line between them). Links are tracked; every email carries an unsubscribe link. Placeholders: <% Leads::Personalization::PLACEHOLDERS.each do |name| %><code class="code">{{<%= name %>}}</code> <% end %></p>
+        <%= settings_field "Words" do %>
+          <%= form.text_area :body, rows: 12, required: true, placeholder: "Hi {{first_name}},\n\n…" %>
+        <% end %>
+      <% end %>
+    <% end %>
+  </div>
+
+  <aside class="editor__aside">
+    <% timing = capture do %>
+      <div class="fields">
+        <fieldset class="stack stack--xs">
+          <legend class="label">When, after the lead arrives</legend>
+          <div class="row row--xs">
+            <%= form.number_field :delay_amount, min: 0, max: 999, required: true, aria: { label: "How long" }, class: "leads-points" %>
+            <%= form.select :delay_unit, Leads::Step::DELAY_UNITS.map { [it, it] }, {}, aria: { label: "Unit" } %>
+          </div>
+          <span class="help">0 is right away.</span>
+        </fieldset>
+        <%= settings_switch form, :skip_if_reached, "Only if they haven’t been reached",
+              hint: "Dropped once someone talks to them: a second call attempt, a “did you get my message?” email." %>
+      </div>
+    <% end %>
+    <%= render "layouts/shared/save_box", key: "step-save", button: persisted ? "Save step" : "Add step", extra: timing,
+          trash_name: ("this step" if persisted), trash_path: (leads_playbook_step_path(playbook, step) if persisted),
+          trash_form: ("step_delete_form" if persisted), trash_message: "Tasks it already planned stay." %>
+  </aside>
+<% end %>
+<% if persisted %>
+  <%= render "layouts/shared/delete_form", id: "step_delete_form", path: leads_playbook_step_path(playbook, step) %>
+<% end %>

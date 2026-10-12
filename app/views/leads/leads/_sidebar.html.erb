@@ -1,0 +1,110 @@
+<%# locals: (lead:, enrollments:, can_write:) %>
+<%# A lead's boxes: who owns it and its stage (saved together), its details,
+    the playbooks it follows, its score, and its emails. %>
+<% can_delete = Current.user.can?("leads:delete") %>
+<details class="postbox panel" open data-postbox="lead-status" data-controller="postbox" data-action="toggle->postbox#remember">
+  <summary class="postbox__header"><h2 class="heading">Lead</h2><%= icon_tag "caret-down", class: "postbox__toggle" %></summary>
+  <div class="postbox__body">
+  <div class="save-box__lines">
+    <% if can_write %>
+      <%= form_with model: lead, url: lead_path(lead), scope: :lead, method: :patch, id: "lead_status_form", class: "fields" do |form| %>
+        <%= settings_field "Stage" do %>
+          <%= form.select :stage, lead_stage_options %>
+        <% end %>
+        <%= settings_field "Owner", hint: "Their open steps move with the lead." do %>
+          <%= form.select :owner_id, [["Nobody", ""]] + lead_people_options %>
+        <% end %>
+      <% end %>
+    <% else %>
+      <p>Stage: <%= lead_stage_tag lead.stage %></p>
+      <p>Owner: <%= lead_person_name(lead.owner) %></p>
+    <% end %>
+  </div>
+  <div class="save-box__actions save-box__actions--ruled">
+    <% if can_delete %>
+      <%= button_to "Move to Trash", lead_path(lead), method: :delete, class: "btn btn--plain btn--sm text-danger", form_class: "contents",
+            data: { turbo_confirm: "Move #{lead.display_name} to the trash? Its tasks and emails stop; it can be restored for 30 days." } %>
+    <% end %>
+    <% if can_write %>
+      <button type="submit" form="lead_status_form" class="btn btn--primary push-end">Update</button>
+    <% end %>
+  </div>
+  </div>
+</details>
+
+<%= postbox "lead-details", "Details" do %>
+  <dl class="details">
+    <dt>Email</dt><dd class="break-all"><%= lead.email.presence || "—" %></dd>
+    <dt>Phone</dt><dd><%= lead.phone.presence || "—" %></dd>
+    <dt>Company</dt><dd><%= lead.company.presence || "—" %></dd>
+    <dt>From</dt><dd><%= lead.source_text %></dd>
+    <dt>Reached</dt><dd><%= lead.contacted_at ? time_ago_tag(lead.contacted_at) : "Not yet" %></dd>
+  </dl>
+  <% if can_write %>
+    <%= link_to "Edit details", edit_lead_path(lead), class: "btn btn--sm" %>
+  <% end %>
+<% end %>
+
+<details class="postbox panel" open data-postbox="lead-playbooks" data-controller="postbox" data-action="toggle->postbox#remember">
+  <summary class="postbox__header"><h2 class="heading">Playbooks</h2><%= icon_tag "caret-down", class: "postbox__toggle" %></summary>
+  <div class="postbox__body postbox__body--padded">
+  <% if enrollments.none? %>
+    <p class="text-small text-muted">Not following a playbook.</p>
+  <% end %>
+  <ul class="stack stack--sm">
+    <% enrollments.each do |enrollment| %>
+      <%# herb:key enrollment.id %>
+      <li class="row row--between row--top">
+        <span class="stack stack--2xs">
+          <span class="text-medium"><%= enrollment.playbook.name %></span>
+          <span class="text-small text-muted">
+            <%= enrollment.active? ? enrollment.progress_label : "#{enrollment.status.capitalize}#{" (#{enrollment.stop_reason.humanize(capitalize: false)})" if enrollment.stop_reason}" %>
+          </span>
+        </span>
+        <% if enrollment.active? && can_write %>
+          <%= button_to "Stop", lead_enrollment_path(lead, enrollment), method: :delete, class: "btn btn--plain btn--sm", form_class: "contents" %>
+        <% end %>
+      </li>
+    <% end %>
+  </ul>
+  <% playbooks = Leads::Playbook.ordered.to_a %>
+  <% if can_write && playbooks.any? && lead.open? %>
+    <%= form_with url: lead_enrollments_path(lead), scope: :enrollment, class: "row row--xs" do |form| %>
+      <%= form.select :playbook_id, playbooks.map { [it.name, it.id] }, {}, aria: { label: "Playbook" }, class: "grow" %>
+      <button type="submit" class="btn btn--sm">Start</button>
+    <% end %>
+  <% end %>
+  </div>
+</details>
+
+<details class="postbox panel" data-postbox="lead-score" data-controller="postbox" data-action="toggle->postbox#remember">
+  <summary class="postbox__header"><h2 class="heading">Score</h2><%= icon_tag "caret-down", class: "postbox__toggle" %></summary>
+  <div class="postbox__body postbox__body--padded">
+  <p><span class="text-large text-semibold"><%= lead.score %></span> <span class="text-muted">points · hot at <%= Leads::Settings.current.hot_threshold %></span></p>
+  <% if can_write %>
+    <%= form_with url: lead_score_adjustments_path(lead), scope: :score_adjustment, class: "fields" do |form| %>
+      <div class="row row--xs">
+        <%= form.number_field :points, required: true, placeholder: "+5", aria: { label: "Points" }, class: "leads-points" %>
+        <%= form.text_field :reason, placeholder: "Why", aria: { label: "Reason" }, class: "grow" %>
+        <button type="submit" class="btn btn--sm">Adjust</button>
+      </div>
+    <% end %>
+  <% end %>
+  </div>
+</details>
+
+<% if lead.email.present? %>
+  <details class="postbox panel" data-postbox="lead-emails" data-controller="postbox" data-action="toggle->postbox#remember">
+    <summary class="postbox__header"><h2 class="heading">Emails</h2><%= icon_tag "caret-down", class: "postbox__toggle" %></summary>
+    <div class="postbox__body postbox__body--padded">
+    <% if lead.unsubscribed? %>
+      <p class="text-small">Unsubscribed <%= time_ago_tag lead.unsubscribed_at %>: playbooks send them nothing.</p>
+      <% if can_write %>
+        <%= button_to "They asked to hear from us again", lead_subscription_path(lead), class: "btn btn--sm", form_class: "contents" %>
+      <% end %>
+    <% else %>
+      <p class="text-small text-muted"><%= pluralize(lead.messages.count, "email") %> sent by playbooks, <%= lead.messages.where.not(opened_at: nil).count %> opened.</p>
+    <% end %>
+    </div>
+  </details>
+<% end %>

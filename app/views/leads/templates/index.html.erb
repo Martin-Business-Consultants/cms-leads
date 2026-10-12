@@ -1,0 +1,37 @@
+<% @page_title = "Templates" %>
+<%= parent_page "Leads", leads_queue_path %>
+<% can_edit = Current.user.can?("leads:playbooks") %>
+
+<% content_for :page_actions do %>
+  <% if can_edit %>
+    <%= link_to "Add New", new_leads_template_path, class: "btn" %>
+  <% end %>
+<% end %>
+<%= render "layouts/shared/page_header", title: @page_title %>
+
+<p class="text-muted measure--lg">What to send or say in the situations that come up. Each lead’s page fills them in for that lead — <code class="code">{{first_name}}</code>, <code class="code">{{company}}</code>, <code class="code">{{my_name}}</code>, <code class="code">{{business}}</code> — ready to copy or open in your email or messages.</p>
+
+<% Leads::Template::KINDS.each do |kind, label| %>
+  <%# herb:key kind %>
+  <% templates = @templates.fetch(kind, []) %>
+  <section class="panel" aria-labelledby="templates_<%= kind %>">
+    <header class="panel__header row row--between">
+      <h2 class="heading" id="templates_<%= kind %>"><%= label.pluralize %></h2>
+      <% if can_edit %><%= link_to "Add #{label.downcase}", new_leads_template_path(kind: kind), class: "btn btn--sm" %><% end %>
+    </header>
+    <ul class="divided">
+      <% templates.each do |template| %>
+        <%# herb:key template.id %>
+        <li id="template_<%= template.id %>" class="leads-row">
+          <span class="stack stack--2xs grow">
+            <%= can_edit ? link_to(template.title, edit_leads_template_path(template), class: "title-link") : tag.span(template.title, class: "text-medium") %>
+            <% if template.situation.present? %><span class="text-small text-muted"><%= template.situation %></span><% end %>
+          </span>
+        </li>
+      <% end %>
+      <% if templates.empty? %>
+        <li class="leads-row text-muted">None yet.</li>
+      <% end %>
+    </ul>
+  </section>
+<% end %>

@@ -1,0 +1,106 @@
+<% @page_title = "Needs you" %>
+<% overdue = @queue.overdue.to_a %>
+<% today = @queue.today.to_a %>
+<% unplanned = @queue.without_next_step.to_a %>
+<% hot = @queue.hot.to_a %>
+<% coming = @queue.coming_up.to_a %>
+
+<% content_for :page_actions do %>
+  <% if Current.user.can?("leads:write") %>
+    <%= link_to "Add New", new_lead_path, class: "btn" %>
+  <% end %>
+  <%= link_to "All leads", leads_path, class: "btn" %>
+<% end %>
+<%= render "layouts/shared/page_header", title: @page_title %>
+
+<%= render "layouts/shared/status_links", param: :whose, current: @queue.whose, options: lead_queue_whose_options %>
+
+<% if overdue.none? && today.none? && unplanned.none? %>
+  <section class="panel empty-state stack stack--sm">
+    <%= icon_tag "check-circle", class: "icon--xl text-faint" %>
+    <p class="text-medium text-ink">Nothing needs doing right now.</p>
+    <p class="text-muted">Every open lead has a next step, and none is due today.<% if coming.any? %> Coming up this week: <%= pluralize(coming.size, "task") %>.<% end %></p>
+  </section>
+<% end %>
+
+<% [["Overdue", overdue, "These were due already: the longer a lead waits, the colder it gets."],
+    ["Today", today, nil]].each do |heading, tasks, note| %>
+  <%# herb:key heading %>
+  <% next if tasks.empty? %>
+  <section class="panel" aria-labelledby="queue_<%= heading.parameterize %>">
+    <header class="panel__header row row--between">
+      <h2 class="heading" id="queue_<%= heading.parameterize %>"><%= heading %> <span class="text-muted"><%= tasks.size %></span></h2>
+      <% if note %><span class="text-small text-muted"><%= note %></span><% end %>
+    </header>
+    <ul class="divided">
+      <% tasks.each do |task| %>
+        <%# herb:key task.id %>
+        <%= render "leads/tasks/task", task: task, show_lead: true, from: "queue", whose: @queue.whose %>
+      <% end %>
+    </ul>
+  </section>
+<% end %>
+
+<% if unplanned.any? %>
+  <section class="panel" aria-labelledby="queue_unplanned">
+    <header class="panel__header row row--between">
+      <h2 class="heading" id="queue_unplanned">No next step <span class="text-muted"><%= unplanned.size %></span></h2>
+      <span class="text-small text-muted">Open leads with nothing planned. Decide what’s next, or close them.</span>
+    </header>
+    <ul class="divided">
+      <% unplanned.each do |lead| %>
+        <%# herb:key lead.id %>
+        <li class="leads-row">
+          <span class="stack stack--2xs grow">
+            <%= link_to lead.display_name, lead_path(lead), class: "title-link" %>
+            <span class="cluster cluster--xs text-small text-muted">
+              <%= lead_stage_tag lead.stage %>
+              <span><%= lead.source_text %></span>
+              <span>· <%= lead_person_name(lead.owner) %></span>
+              <span>· last heard <%= time_ago_tag(lead.last_activity_at || lead.created_at) %></span>
+            </span>
+          </span>
+          <%= link_to "Plan the next step", lead_path(lead, anchor: "next_step"), class: "btn btn--sm" %>
+        </li>
+      <% end %>
+    </ul>
+  </section>
+<% end %>
+
+<% if hot.any? %>
+  <section class="panel" aria-labelledby="queue_hot">
+    <header class="panel__header row row--between">
+      <h2 class="heading" id="queue_hot">Hot <span class="text-muted"><%= hot.size %></span></h2>
+      <span class="text-small text-muted">A high score and active this week: worth a call.</span>
+    </header>
+    <ul class="divided">
+      <% hot.each do |lead| %>
+        <%# herb:key lead.id %>
+        <li class="leads-row">
+          <span class="stack stack--2xs grow">
+            <%= link_to lead.display_name, lead_path(lead), class: "title-link" %>
+            <span class="cluster cluster--xs text-small text-muted">
+              <%= lead_stage_tag lead.stage %>
+              <span>Score <%= lead.score %></span>
+              <span>· active <%= time_ago_tag lead.last_activity_at %></span>
+            </span>
+          </span>
+        </li>
+      <% end %>
+    </ul>
+  </section>
+<% end %>
+
+<% if coming.any? %>
+  <section class="panel" aria-labelledby="queue_coming">
+    <header class="panel__header">
+      <h2 class="heading" id="queue_coming">This week <span class="text-muted"><%= coming.size %></span></h2>
+    </header>
+    <ul class="divided">
+      <% coming.each do |task| %>
+        <%# herb:key task.id %>
+        <%= render "leads/tasks/task", task: task, show_lead: true, from: "queue", whose: @queue.whose %>
+      <% end %>
+    </ul>
+  </section>
+<% end %>
