@@ -18,8 +18,8 @@ first; this code follows both.
   `Leads::Enquiry` (what someone sent), `Leads::Queue` (Needs you),
   `Leads::Task::Completion` (done, and what's next), `Leads::When`,
   `Leads::Personalization`, `Leads::Settings`, `Leads::Digest`,
-  `Leads::Draft::Writer` (the Messages API over Net::HTTP: a plugin may use
-  only gems the core bundles).
+  `Leads::Draft::Writer` (through the AI plugin's `Ai.structured`, checked with
+  `Writer.available?`, so Leads works without it).
 - Views use the admin's CSS vocabulary; what's the plugin's alone is a
   `leads-*` class in `app/assets/stylesheets/leads/leads.css`. Editors start
   with their title field (`title-input`), with the sidebar beside it — no

@@ -1,6 +1,6 @@
 <%# locals: (lead:, draft:, templates:, can_write:) %>
 <%# What to send or say: the tip for the lead's stage and the guides that
-    help, Claude's drafts (when Settings › Leads has a key), and the
+    help, the AI's drafts (when the AI plugin is set up), and the
     templates filled in for this lead, each to copy or open in email or
     messages. %>
 <% personalization = Leads::Personalization.new(lead, sender: Current.user) %>
@@ -32,7 +32,7 @@
           <% end %>
         </div>
         <% if draft.nil? %>
-          <p class="text-small text-muted">Claude can draft an email, a text and a call plan for this lead, in your voice (Settings › Brand context).</p>
+          <p class="text-small text-muted">The AI can draft an email, a text and a call plan for this lead, in your voice (Settings › Brand context).</p>
         <% elsif draft.working? %>
           <p class="text-small text-muted">Drafting… reload in a moment.</p>
         <% elsif draft.failed? %>
@@ -112,7 +112,7 @@
               <% end %>
             </div>
           <% end %>
-          <p class="text-small text-faint">Drafted <%= time_ago_tag draft.updated_at %>. Read it before you send it: Claude doesn’t know what isn’t written down.</p>
+          <p class="text-small text-faint">Drafted <%= time_ago_tag draft.updated_at %>. Read it before you send it: the AI doesn’t know what isn’t written down.</p>
         <% end %>
       </section>
     <% end %>

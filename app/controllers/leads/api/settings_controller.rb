@@ -2,8 +2,8 @@
 
 module Leads
   module Api
-    # GET and PATCH /api/leads/settings: Settings › Leads. The Anthropic key
-    # is write-only: it reads back as ai_key_set.
+    # GET and PATCH /api/leads/settings: Settings › Leads. Drafts come from
+    # the AI plugin (Settings › AI): ai_available says whether it's set up.
     class SettingsController < BaseController
       requires_capability "settings:read", only: :show
       requires_capability "settings:write", only: :update
@@ -14,7 +14,7 @@ module Leads
 
       def update
         @settings = Leads::Settings.update(params.require(:settings).permit(:notify_owner, :digest_hour, :default_owner_id,
-          :forms_mode, :hot_threshold, :ai_drafts, :ai_model, :anthropic_api_key, :remove_ai_key,
+          :forms_mode, :hot_threshold, :ai_drafts,
           notify_emails: [], forms: [], points: {}).to_h)
         Event.record("settings.leads_updated")
         render :show

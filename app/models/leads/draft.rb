@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Leads
-  # Replies drafted for a lead by Claude (Leads::Draft::Writer): a short
+  # Replies drafted for a lead by the AI plugin (Leads::Draft::Writer): a short
   # read of what they want, the best next step, an email, a text and a call
   # plan with the questions to ask and the objections to expect. Written in
   # the background — "working" until it's "ready" or "failed" — and never
@@ -14,7 +14,7 @@ module Leads
 
     validates :state, inclusion: {in: STATES}
 
-    def self.available? = Leads::Settings.current.ai_key.present?
+    def self.available? = Leads::Draft::Writer.available?
 
     def self.write_later(lead, user: nil)
       draft = lead.drafts.create!(user_id: user&.id)
@@ -27,7 +27,7 @@ module Leads
     def failed? = state == "failed"
 
     def write_now
-      update!(payload: Leads::Draft::Writer.new(lead).write, state: "ready", error: nil)
+      update!(payload: Leads::Draft::Writer.new(lead, user: user).write, state: "ready", error: nil)
       lead.record_activity(:drafted, summary: "Replies drafted", user: user, data: {draft_id: id})
     rescue Leads::Draft::Writer::Error => error
       update!(state: "failed", error: error.message)

@@ -2,7 +2,7 @@
 
 # Replies drafted for a lead by AI (Leads::Draft): an email, a text, a call
 # plan and the best next step, in the site's voice (Settings › Brand
-# context). Only while an Anthropic key is set in Settings › Leads.
+# context). Only while the AI plugin is set up (Settings › AI).
 module Leads::Lead::Draftable
   extend ActiveSupport::Concern
 

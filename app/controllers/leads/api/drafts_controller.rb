@@ -19,7 +19,7 @@ module Leads
         if @draft
           render :show, status: :accepted
         else
-          render json: {error: "unavailable", message: "No Anthropic API key is set in Settings › Leads"}, status: :unprocessable_content
+          render json: {error: "unavailable", message: Leads::Draft::Writer.unavailable_reason}, status: :unprocessable_content
         end
       end
     end

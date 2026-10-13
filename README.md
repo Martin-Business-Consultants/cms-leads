@@ -36,8 +36,9 @@ playbook's open steps and stops its emails.
 
 **Replies**: a tip for the lead's stage with the guides that help, the
 **templates** (emails, texts and call scripts, filled in for the lead, to copy
-or open in your email or messages app), and — with an Anthropic API key in
-Settings › Leads — replies **drafted by Claude** in the site's voice
+or open in your email or messages app), and — with the
+[AI plugin](https://github.com/Martin-Business-Consultants/cms-ai) set up in Settings › AI —
+replies **drafted by the AI** in the site's voice
 (Settings › Brand context): a summary, the best next step to plan in one
 click, an email, a text and a call plan with the questions to ask and the
 objections to expect. Nothing is ever sent by itself.

@@ -1,17 +1,13 @@
 # frozen_string_literal: true
 
-require "net/http"
-
-# Asks Claude (the Messages API, with the key and model in Settings › Leads)
-# for a lead's replies, as JSON in a fixed shape (structured output), in the
-# site's voice: the brand brief from Settings › Brand context, the site's
-# name, and the lead — who they are, what they sent, its timeline. Plain
-# Net::HTTP: a plugin may use only the gems the core bundles.
+# Asks the install's AI (the AI plugin, cms-ai: Ai.structured, with the
+# provider and model in Settings › AI) for a lead's replies, as JSON in a
+# fixed shape, in the site's voice: the brand brief from Settings › Brand
+# context, the site's name, and the lead — who they are, what they sent, its
+# timeline.
 class Leads::Draft::Writer
   class Error < StandardError; end
 
-  ENDPOINT = URI("https://api.anthropic.com/v1/messages")
-  TIMEOUT = 120
   TIMELINE = 15
 
   SCHEMA = {
@@ -61,58 +57,34 @@ class Leads::Draft::Writer
     one clear question or next step. Sign the email with {{my_name}}.
   TEXT
 
-  def initialize(lead)
+  # Whether the AI plugin is installed, on, set up and within its limit.
+  def self.available? = defined?(::Ai) && ::Ai.respond_to?(:available?) && ::Ai.available?
+
+  def self.unavailable_reason
+    return "Drafts come from the AI plugin: install it (Martin-Business-Consultants/cms-ai) and set it up in Settings › AI" unless defined?(::Ai) && ::Ai.respond_to?(:unavailable_reason)
+
+    ::Ai.unavailable_reason
+  end
+
+  def initialize(lead, user: nil)
     @lead = lead
-    @settings = Leads::Settings.current
+    @user = user
   end
 
   # The drafted replies, as a hash in SCHEMA's shape. Raises Error.
   def write
-    raise Error, "No Anthropic API key is set in Settings › Leads" if @settings.ai_key.blank?
+    raise Error, self.class.unavailable_reason unless self.class.available?
 
-    response = post(request_body)
-    body = JSON.parse(response.body) rescue {}
-    raise Error, failure_message(response, body) unless response.is_a?(Net::HTTPSuccess)
+    ::Ai.structured(purpose: "leads_draft", system: system_prompt, prompt: lead_description, schema: SCHEMA, user: @user)
+  rescue Error
+    raise
+  rescue => error
+    raise unless defined?(::Ai::Error) && (error.is_a?(::Ai::Error) || error.is_a?(::Ai::Unavailable))
 
-    case body["stop_reason"]
-    when "refusal" then raise Error, "Claude declined to draft replies for this lead"
-    when "max_tokens" then raise Error, "The drafts ran too long; try again"
-    end
-
-    text = Array(body["content"]).select { it["type"] == "text" }.map { it["text"] }.join
-    JSON.parse(text)
-  rescue JSON::ParserError
-    raise Error, "Claude's answer wasn't in the expected shape; try again"
-  rescue Net::OpenTimeout, Net::ReadTimeout, SocketError, SystemCallError, OpenSSL::SSL::SSLError => error
-    raise Error, "Couldn't reach Anthropic: #{error.class.name.demodulize}"
-  end
-
-  def request_body
-    {
-      model: @settings.ai_model,
-      max_tokens: 16_000,
-      output_config: {effort: "medium", format: {type: "json_schema", schema: SCHEMA}},
-      fallbacks: "default",
-      system: system_prompt,
-      messages: [{role: "user", content: lead_description}]
-    }
+    raise Error, error.message
   end
 
   private
-
-  def post(body)
-    http = Net::HTTP.new(ENDPOINT.host, ENDPOINT.port)
-    http.use_ssl = true
-    http.open_timeout = 10
-    http.read_timeout = TIMEOUT
-    request = Net::HTTP::Post.new(ENDPOINT.request_uri)
-    request["content-type"] = "application/json"
-    request["x-api-key"] = @settings.ai_key
-    request["anthropic-version"] = "2023-06-01"
-    request["anthropic-beta"] = "server-side-fallback-2026-07-01"
-    request.body = JSON.generate(body)
-    http.request(request)
-  end
 
   def system_prompt
     brand = defined?(::BrandBrief) ? ::BrandBrief.to_h : {}
@@ -128,14 +100,5 @@ class Leads::Draft::Writer
     timeline = @lead.activities.limit(TIMELINE).map { "#{it.created_at.to_date.iso8601} #{it.summary}" }
     [lines.compact.join("\n"), ("What they sent:\n#{sent.join("\n")}" if sent.any?),
       ("Timeline, newest first:\n#{timeline.join("\n")}" if timeline.any?)].compact.join("\n\n")
-  end
-
-  def failure_message(response, body)
-    detail = body.dig("error", "message").presence
-    case response.code.to_i
-    when 401 then "Anthropic didn't accept the API key in Settings › Leads"
-    when 429 then "Anthropic is rate limiting this key; try again shortly"
-    else "Anthropic answered #{response.code}#{": #{detail}" if detail}"
-    end
   end
 end

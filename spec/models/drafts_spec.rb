@@ -12,48 +12,40 @@ RSpec.describe "Drafted replies", type: :model do
      "call" => {"opening" => "Hi Jordan", "questions" => ["Which sites?"], "objections" => [{"objection" => "Price", "answer" => "Value"}]}}
   end
 
-  def respond_with(status, body)
-    response = Net::HTTPResponse::CODE_TO_OBJ[status.to_s].new("1.1", status.to_s, "")
-    allow(response).to receive(:body).and_return(JSON.generate(body))
-    allow_any_instance_of(Net::HTTP).to receive(:request) do |_http, request|
-      @request = request
-      response
-    end
-  end
-
   before do
     switch_plugin :leads, on: true
-    Leads::Settings.update("anthropic_api_key" => "sk-ant-test")
+    switch_plugin :ai, on: true
+    Ai::Settings.update("provider" => "opencode", "api_key" => "zen-key")
   end
 
-  it "asks Claude for the replies in a fixed shape and keeps them" do
-    respond_with(200, {"stop_reason" => "end_turn", "content" => [{"type" => "text", "text" => JSON.generate(answer)}]})
+  it "asks the AI plugin for the replies in a fixed shape and keeps them" do
+    asked = nil
+    allow(Ai).to receive(:structured) { |**request| asked = request; answer }
     draft = Leads::Draft.create!(lead: lead)
 
     draft.write_now
 
     expect(draft.reload).to have_attributes(state: "ready", summary: "Jordan needs 40 units by May.")
-    body = JSON.parse(@request.body)
-    expect(body).to include("model" => "claude-opus-5-5", "fallbacks" => "default")
-    expect(body.dig("output_config", "format", "type")).to eq("json_schema")
-    expect(body.dig("messages", 0, "content")).to include("40 units by May")
-    expect(@request["x-api-key"]).to eq("sk-ant-test")
+    expect(asked).to include(purpose: "leads_draft", schema: Leads::Draft::Writer::SCHEMA)
+    expect(asked[:prompt]).to include("40 units by May")
     expect(lead.activities.find_by(kind: "drafted")).to be_present
   end
 
-  it "says why when Anthropic refuses the key" do
-    respond_with(401, {"error" => {"message" => "invalid x-api-key"}})
+  it "says why when the provider refuses" do
+    allow(Ai).to receive(:structured).and_raise(Ai::Error, "OpenCode Zen didn't accept the key in Settings › AI")
     draft = Leads::Draft.create!(lead: lead)
 
     draft.write_now
 
-    expect(draft.reload).to have_attributes(state: "failed", error: "Anthropic didn't accept the API key in Settings › Leads")
+    expect(draft.reload).to have_attributes(state: "failed", error: "OpenCode Zen didn't accept the key in Settings › AI")
   end
 
-  it "isn't offered without a key" do
-    Leads::Settings.update("remove_ai_key" => "1")
+  it "isn't offered until the AI plugin is set up" do
+    Ai::Settings.update("remove_api_key" => "1")
 
     expect(Leads::Draft.available?).to be(false)
+    expect(Leads::Settings.current.ai_drafts?).to be(false)
     expect(lead.draft_replies_later).to be_nil
+    expect(Leads::Draft::Writer.unavailable_reason).to include("Settings › AI")
   end
 end

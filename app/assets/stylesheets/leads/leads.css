@@ -94,7 +94,7 @@
     white-space: pre-wrap;
   }
 
-  /* Claude's suggested next step, with Plan it. */
+  /* The AI's suggested next step, with Plan it. */
   .leads-suggestion {
     background-color: var(--accent-50);
     border: 1px solid var(--accent-100);

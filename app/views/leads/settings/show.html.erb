@@ -73,19 +73,11 @@
     <section class="panel panel--padded fields">
       <div class="stack stack--xs">
         <h2 class="heading">Drafted replies</h2>
-        <p class="text-muted">Claude drafts an email, a text and a call plan for a lead, in the voice of Settings › Brand context. Nothing is sent by itself: a person reads, edits and sends. Uses your own Anthropic account; each draft is one request.</p>
+        <p class="text-muted">The AI drafts an email, a text and a call plan for a lead, in the voice of Settings › Brand context. Nothing is sent by itself: a person reads, edits and sends.</p>
       </div>
-      <%= settings_field "Anthropic API key", hint: (@settings.ai_key.present? ? "A key is set. Type a new one to replace it." : "From console.anthropic.com › API keys.") do %>
-        <%= form.password_field :anthropic_api_key, autocomplete: "off", placeholder: (@settings.ai_key.present? ? "•••••••• (set)" : "sk-ant-…") %>
-      <% end %>
-      <% if @settings.ai_key.present? %>
-        <label class="choice"><%= form.check_box :remove_ai_key %><span>Remove the key</span></label>
-      <% end %>
-      <div class="grid grid--2 fields-grid">
-        <%= settings_field "Model" do %>
-          <%= form.text_field :ai_model, value: @settings.ai_model %>
-        <% end %>
-      </div>
+      <p class="text-small <%= Leads::Draft.available? ? "text-muted" : "text-danger" %>">
+        <%= Leads::Draft.available? ? "Through the AI plugin, with the provider and model in Settings › AI." : "#{Leads::Draft::Writer.unavailable_reason}." %>
+      </p>
       <%= settings_switch form, :ai_drafts, "Draft replies for every new lead", checked: @settings.to_h[:ai_drafts],
             hint: "As soon as it comes in, so they’re waiting when someone opens the lead." %>
     </section>

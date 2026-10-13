@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
-# Settings › Leads, kept in the core's Setting "leads" (the Anthropic key
-# among its secrets): who hears about new leads, the morning digest's hour,
+# Settings › Leads, kept in the core's Setting "leads": who hears about new leads, the morning digest's hour,
 # who owns a lead no playbook assigns, which forms make leads, the points
 # things are worth and the score that makes a lead hot, and the AI drafts.
 class Leads::Settings
@@ -9,7 +8,6 @@ class Leads::Settings
   DEFAULT_POINTS = {"captured" => 10, "returned" => 15, "email_open" => 1, "email_click" => 3, "note" => 0}.freeze
   POINT_LABELS = {"captured" => "Getting in touch", "returned" => "Getting in touch again", "email_open" => "Opening an email",
                   "email_click" => "Clicking a link in one", "note" => "A note"}.freeze
-  DEFAULT_MODEL = "claude-opus-5-5"
   DIGEST_HOURS = (5..11).to_a.freeze
 
   def self.current = new(Setting.get(KEY))
@@ -50,17 +48,15 @@ class Leads::Settings
 
   def hot_threshold = (@data["hot_threshold"].presence || 25).to_i
 
-  def ai_drafts? = @data.fetch("ai_drafts", true) == true && ai_key.present?
+  # Drafting replies for every new lead: switched on here, and the AI plugin set up (Settings › AI).
+  def ai_drafts? = @data.fetch("ai_drafts", true) == true && Leads::Draft.available?
 
-  def ai_model = @data["ai_model"].presence || DEFAULT_MODEL
 
-  def ai_key = Setting.secret(KEY, "anthropic_api_key")
 
   def templates_seeded? = @data["templates_seeded"] == true
 
   # From Settings › Leads' form or the API's PATCH: only what was sent
-  # changes. The key changes only when one is typed, and goes with
-  # remove_ai_key.
+  # changes.
   def self.update(params)
     params = params.to_h.stringify_keys
     boolean = ActiveModel::Type::Boolean.new
@@ -73,16 +69,10 @@ class Leads::Settings
       "forms" => ->(value) { Array(value).compact_blank.map(&:to_s) },
       "points" => ->(value) { DEFAULT_POINTS.keys.index_with { (value.to_h.stringify_keys[it].presence || DEFAULT_POINTS[it]).to_i } },
       "hot_threshold" => ->(value) { [(value.presence || 25).to_i, 1].max },
-      "ai_drafts" => ->(value) { boolean.cast(value) || false },
-      "ai_model" => ->(value) { value.to_s.strip.presence || DEFAULT_MODEL }
+      "ai_drafts" => ->(value) { boolean.cast(value) || false }
     }
     data = readers.filter_map { |name, read| [name, read.call(params[name])] if params.key?(name) }.to_h
     Setting.set(KEY, data) if data.any?
-    if params["anthropic_api_key"].present?
-      Setting.set_secret(KEY, "anthropic_api_key" => params["anthropic_api_key"].to_s.strip)
-    elsif boolean.cast(params["remove_ai_key"])
-      Setting.set_secret(KEY, "anthropic_api_key" => "")
-    end
     current
   end
 
@@ -91,6 +81,6 @@ class Leads::Settings
   def to_h
     {notify_emails: notify_emails, notify_owner: notify_owner?, digest_hour: digest_hour, default_owner_id: default_owner_id,
      forms_mode: forms_mode, forms: forms, points: points, hot_threshold: hot_threshold,
-     ai_drafts: @data.fetch("ai_drafts", true) == true, ai_model: ai_model, ai_key_set: ai_key.present?}
+     ai_drafts: @data.fetch("ai_drafts", true) == true, ai_available: Leads::Draft.available?}
   end
 end

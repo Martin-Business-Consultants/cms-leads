@@ -76,14 +76,12 @@ RSpec.describe "Leads", type: :request do
       expect(Leads::Lead.with_discarded.find(lead.id)).to be_discarded
     end
 
-    it "saves Settings › Leads, keeping the key secret" do
+    it "saves Settings › Leads" do
       patch settings_leads_path, params: {leads: {notify_emails: "a@example.com, nope", notify_owner: "0", digest_hour: "",
-                                                  anthropic_api_key: "sk-ant-x", forms_mode: "all", hot_threshold: "40"}}
+                                                  forms_mode: "all", hot_threshold: "40"}}
 
       settings = Leads::Settings.current
       expect(settings).to have_attributes(notify_emails: ["a@example.com"], notify_owner?: false, digest_hour: nil, hot_threshold: 40)
-      expect(settings.ai_key).to eq("sk-ant-x")
-      expect(Setting.get("leads").to_s).not_to include("sk-ant-x")
     end
 
     it "refuses a role without the capability" do
